@@ -1,0 +1,33 @@
+import { getTokenData } from '../generate/route';
+
+export async function GET(req) {
+  const { searchParams } = new URL(req.url);
+  const token = searchParams.get('token');
+
+  if (!token) {
+    return new Response(JSON.stringify({ error: 'Token is required' }), { status: 400 });
+  }
+
+  const data = getTokenData(token);
+  if (!data) {
+    return new Response(JSON.stringify({ error: 'Invalid token' }), { status: 400 });
+  }
+
+  const elapsed = Date.now() - data.created;
+
+  if (elapsed < 30 * 1000) {
+    return new Response(
+      JSON.stringify({ error: 'Please wait at least 30 seconds before accessing the link.' }),
+      { status: 403 }
+    );
+  }
+
+  if (Date.now() > data.expiresAt) {
+    return new Response(JSON.stringify({ error: 'QR code expired' }), { status: 410 });
+  }
+
+  return new Response(
+    JSON.stringify({ url: data.url, scannedAt: new Date().toISOString() }),
+    { status: 200 }
+  );
+}
